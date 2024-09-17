@@ -55,7 +55,7 @@ func (suite *HTTPTestSuite) SetupSuite() {
 	tee.AttachRunner(server.NewSnipRunner(cache.Run))
 	hub := server.NewSocketHub(status)
 	tee.AttachRunner(server.NewSnipRunner(hub.Run))
-	suite.httpd = server.NewHttpd(hub, status, qe, cache)
+	suite.httpd = server.NewHttpd(hub, status, qe, cache, nil)
 }
 
 func (suite *HTTPTestSuite) TestAccessAssetsFromRoot() {

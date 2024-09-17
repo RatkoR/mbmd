@@ -299,6 +299,19 @@ func run(cmd *cobra.Command, args []string) {
 	// status cache (always needed to consume control messages)
 	status := server.NewStatus(qe, server.ToControlChannel(teeC.Attach()))
 
+	// MySQL client
+	var mysql *server.MySQL = nil
+	if viper.GetString("mysql.host") != "" {
+		mysql = server.NewMySQLClient(
+			viper.GetString("mysql.host"),
+			viper.GetString("mysql.user"),
+			viper.GetString("mysql.password"),
+			viper.GetString("mysql.database"),
+		)
+
+		tee.AttachRunner(server.NewSnipRunner(mysql.Run))
+	}
+
 	// web server
 	if viper.GetString("api") != "" {
 		// measurement cache for REST api
@@ -310,7 +323,7 @@ func run(cmd *cobra.Command, args []string) {
 		tee.AttachRunner(server.NewSnipRunner(hub.Run))
 
 		// http daemon
-		httpd := server.NewHttpd(hub, status, qe, cache)
+		httpd := server.NewHttpd(hub, status, qe, cache, mysql)
 		go httpd.Run(viper.GetString("api"))
 
 		if viper.GetBool("profile") {
@@ -364,18 +377,6 @@ func run(cmd *cobra.Command, args []string) {
 		)
 
 		tee.AttachRunner(server.NewSnipRunner(influx.Run))
-	}
-
-	// MySQL client
-	if viper.GetString("mysql.host") != "" {
-		mysql := server.NewMySQLClient(
-			viper.GetString("mysql.host"),
-			viper.GetString("mysql.user"),
-			viper.GetString("mysql.password"),
-			viper.GetString("mysql.database"),
-		)
-
-		tee.AttachRunner(server.NewSnipRunner(mysql.Run))
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

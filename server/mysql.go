@@ -8,6 +8,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/volkszaehler/mbmd/meters"
 )
 
 // MySQL publisher
@@ -92,4 +93,67 @@ func (m *MySQL) Run(in <-chan QuerySnip) {
 			stmt.Close()
 		}
 	}
+}
+
+func (m *MySQL) MeasurementReader(device string, measurements string, unixFrom int64, unixTo int64) (readings []*Readings, err error) {
+	mArray := strings.Split(measurements, ",")
+
+	sql := `SELECT MIN(tstamp), AVG(value), measurement
+		    FROM readings
+	        WHERE device = ?
+			    AND tstamp >= ?
+				AND tstamp < ?
+				AND measurement in (?` + strings.Repeat(",?", len(mArray)-1) + `)
+			GROUP BY FROM_UNIXTIME(tstamp, '%Y-%m-%d %H:%i'), measurement
+			ORDER BY tstamp`
+
+	stmt, err := m.client.Prepare(sql)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	args := []interface{}{device, unixFrom, unixTo}
+
+	for _, measurement := range mArray {
+		args = append(args, strings.Trim(measurement, " "))
+	}
+
+	rows, err := stmt.Query(args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+out:
+	for rows.Next() {
+		var value float64
+		var measurement string
+		var tstamp int64
+
+		err = rows.Scan(&tstamp, &value, &measurement)
+		if err != nil {
+			return nil, err
+		}
+
+		m, err := meters.MeasurementString(measurement)
+		if err != nil {
+			continue
+		}
+
+		for i, reading := range readings {
+			if reading.Timestamp.Unix() == tstamp {
+				readings[i].Values[m] = value
+				continue out
+			}
+		}
+
+		tmp := new(Readings)
+		tmp.Timestamp = time.Unix(tstamp, 0)
+		tmp.Values = map[meters.Measurement]float64{m: value}
+
+		readings = append(readings, tmp)
+	}
+
+	return readings, nil
 }

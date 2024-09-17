@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,6 +29,7 @@ type Httpd struct {
 	router *mux.Router
 	mc     *Cache
 	qe     DeviceInfo
+	mysql  *MySQL
 }
 
 func (h *Httpd) mkIndexHandler() func(http.ResponseWriter, *http.Request) {
@@ -133,6 +135,58 @@ func (h *Httpd) mkSocketHandler(hub *SocketHub) func(http.ResponseWriter, *http.
 	}
 }
 
+func (h *Httpd) mysqlReaderHandler(
+	readingsProvider func(device string, measurements string, unixFrom int64, unixTo int64) ([]*Readings, error),
+) func(http.ResponseWriter, *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+
+		device, ok := vars["id"]
+		if !ok {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		measurements, ok := vars["measurements"]
+		if !ok {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		unixFrom, err := strconv.ParseInt(vars["unixFrom"], 10, 64)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		unixTo, err := strconv.ParseInt(vars["unixTo"], 10, 64)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		readings, err := readingsProvider(device, measurements, unixFrom, unixTo)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		var data []apiData = nil
+
+		for i := range readings {
+			data = append(data, apiData{readings: readings[i]})
+		}
+
+		res := make(map[string][]apiData)
+		res[device] = data
+
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			log.Printf("httpd: failed to encode JSON: %s", err.Error())
+		}
+	})
+}
+
 type debugLogger struct {
 	pattern string
 }
@@ -155,11 +209,12 @@ func jsonHandler(h http.Handler) http.Handler {
 }
 
 // NewHttpd creates HTTP daemon
-func NewHttpd(hub *SocketHub, s *Status, qe DeviceInfo, mc *Cache) *Httpd {
+func NewHttpd(hub *SocketHub, s *Status, qe DeviceInfo, mc *Cache, mysql *MySQL) *Httpd {
 	srv := &Httpd{
 		router: mux.NewRouter().StrictSlash(true),
 		qe:     qe,
 		mc:     mc,
+		mysql:  mysql,
 	}
 
 	// static
@@ -182,6 +237,10 @@ func NewHttpd(hub *SocketHub, s *Status, qe DeviceInfo, mc *Cache) *Httpd {
 	api.HandleFunc("/avg", srv.allDevicesHandler(srv.mc.Average))
 	api.HandleFunc("/avg/{id:[a-zA-Z0-9.]+}", srv.singleDeviceHandler(srv.mc.Average))
 	api.HandleFunc("/status", srv.mkStatusHandler(s))
+
+	if mysql != nil {
+		api.HandleFunc("/mysql/{id:[a-zA-Z0-9.]+}/{measurements:[a-zA-Z0-9.,]+}/{unixFrom:\\d+}/{unixTo:\\d+}", srv.mysqlReaderHandler(srv.mysql.MeasurementReader))
+	}
 
 	// websocket
 	srv.router.HandleFunc("/ws", srv.mkSocketHandler(hub))
