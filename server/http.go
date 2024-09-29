@@ -136,10 +136,11 @@ func (h *Httpd) mkSocketHandler(hub *SocketHub) func(http.ResponseWriter, *http.
 }
 
 func (h *Httpd) mysqlReaderHandler(
-	readingsProvider func(device string, measurements string, unixFrom int64, unixTo int64) ([]*Readings, error),
+	readingsProvider func(device string, measurements string, unixFrom int64, unixTo int64, group int64) ([]*Readings, error),
 ) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
+		var err error
 
 		device, ok := vars["id"]
 		if !ok {
@@ -153,19 +154,34 @@ func (h *Httpd) mysqlReaderHandler(
 			return
 		}
 
-		unixFrom, err := strconv.ParseInt(vars["unixFrom"], 10, 64)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
+		unixFrom := time.Now().Add(time.Hour * -1).Unix()
+		if r.URL.Query().Has("from") {
+			unixFrom, err = strconv.ParseInt(r.URL.Query().Get("from"), 10, 64)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
 		}
 
-		unixTo, err := strconv.ParseInt(vars["unixTo"], 10, 64)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
+		unixTo := time.Now().Unix()
+		if r.URL.Query().Has("to") {
+			unixTo, err = strconv.ParseInt(r.URL.Query().Get("to"), 10, 64)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
 		}
 
-		readings, err := readingsProvider(device, measurements, unixFrom, unixTo)
+		group := int64(60)
+		if r.URL.Query().Has("group") {
+			group, err = strconv.ParseInt(r.URL.Query().Get("group"), 10, 64)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		}
+
+		readings, err := readingsProvider(device, measurements, unixFrom, unixTo, group)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -239,7 +255,7 @@ func NewHttpd(hub *SocketHub, s *Status, qe DeviceInfo, mc *Cache, mysql *MySQL)
 	api.HandleFunc("/status", srv.mkStatusHandler(s))
 
 	if mysql != nil {
-		api.HandleFunc("/mysql/{id:[a-zA-Z0-9.]+}/{measurements:[a-zA-Z0-9.,]+}/{unixFrom:\\d+}/{unixTo:\\d+}", srv.mysqlReaderHandler(srv.mysql.MeasurementReader))
+		api.HandleFunc("/mysql/{id:[a-zA-Z0-9.]+}/{measurements:[a-zA-Z0-9.,]+}", srv.mysqlReaderHandler(srv.mysql.MeasurementReader))
 	}
 
 	// websocket

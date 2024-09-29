@@ -176,6 +176,11 @@ any type is considered valid.
 		"",
 		"MySQL database",
 	)
+	runCmd.PersistentFlags().String(
+		"mysql-include-measurements",
+		"",
+		"Comma delimited string with measurements that will be inserted into MySQL. All other will be discarted.",
+	)
 
 	pflags := runCmd.PersistentFlags()
 
@@ -189,7 +194,7 @@ any type is considered valid.
 	bindPFlagsWithPrefix(pflags, "influx", "url", "database", "measurement", "organization", "token", "user", "password")
 
 	// mysql
-	bindPFlagsWithPrefix(pflags, "mysql", "host", "user", "password", "database")
+	bindPFlagsWithPrefix(pflags, "mysql", "host", "user", "password", "database", "include-measurements")
 }
 
 // checkVersion validates if updates are available
@@ -307,6 +312,7 @@ func run(cmd *cobra.Command, args []string) {
 			viper.GetString("mysql.user"),
 			viper.GetString("mysql.password"),
 			viper.GetString("mysql.database"),
+			viper.GetString("mysql.include-measurements"),
 		)
 
 		tee.AttachRunner(server.NewSnipRunner(mysql.Run))

@@ -32,3 +32,12 @@ for example:
 ```
 mbmd run -a192.168.1.123:1502 -dSOLAREDGE:1.0 -dSOLAREDGE:1.1 -r2s --mysql-database=solaredge --mysql-host=127.0.0.1:3306 --mysql-user=mbmd --mysql-password=secret
 ```
+
+### Insert only specific fields
+
+MySQL table can quickly get millions of rows. If that's a problem for you,
+you can insert only specific fields into db. Set them with `--mysql-inlude-measurements` parameter.
+
+```
+mbmd run -a... --mysql-database=solaredge --mysql-host=127.0.0.1:3306 --mysql-user=mbmd --mysql-password=secret --mysql-include-measurements=Power,ExportImport
+```
