@@ -26,6 +26,7 @@ type DeviceStatus struct {
 	Device string
 	Type   string
 	Online bool
+	Model  string
 	ModbusStatus
 }
 
@@ -81,6 +82,7 @@ func NewStatus(qe DeviceInfo, control <-chan ControlSnip) *Status {
 				Device:       c.Device,
 				Type:         desc.Manufacturer,
 				Online:       c.Status.Online,
+				Model:        desc.Model,
 				ModbusStatus: mbs,
 			}
 			s.meterMap[c.Device] = ds

@@ -204,6 +204,11 @@ func (d *SunSpec) convertPoint(b sunspec.Block, p sunspec.Point) (float64, error
 		FixKostal(p)
 	}
 
+	switch p.Type() {
+	case "enum16":
+		return float64(p.Enum16()), nil
+	}
+
 	v := p.ScaledValue()
 
 	if math.IsNaN(v) {

@@ -22,9 +22,7 @@ type Measurement int
 
 //go:generate enumer -type=Measurement
 const (
-	_ Measurement = iota
-
-	Frequency
+	Frequency Measurement = iota + 1
 
 	Current
 	CurrentL1
@@ -120,6 +118,7 @@ const (
 	DCVoltage
 	DCPower
 	HeatSinkTemp
+	CabinetTemp
 
 	// Strings
 	DCCurrentS1
@@ -144,6 +143,10 @@ const (
 	BatteryVoltage
 
 	PhaseAngle
+
+	// Status
+	Status
+	StatusVendor
 )
 
 var iec = map[Measurement][]string{
@@ -224,6 +227,7 @@ var iec = map[Measurement][]string{
 	DCVoltage:        {"DC Voltage", "V"},
 	DCPower:          {"DC Power", "W"},
 	HeatSinkTemp:     {"Heat Sink Temperature", "°C"},
+	CabinetTemp:      {"Cabinet Temperature", "°C"},
 	DCCurrentS1:      {"String 1 Current", "A"},
 	DCVoltageS1:      {"String 1 Voltage", "V"},
 	DCPowerS1:        {"String 1 Power", "W"},
@@ -243,6 +247,9 @@ var iec = map[Measurement][]string{
 	ChargeState:      {"Charge State", "%"},
 	BatteryVoltage:   {"Battery Voltage", "V"},
 	PhaseAngle:       {"Phase Angle", "°"},
+	Status:           {"Status"},        // Operating State
+	StatusVendor:     {"Status Vendor"}, // Vendor-defined operating state and error codes.
+
 }
 
 // MarshalText implements encoding.TextMarshaler

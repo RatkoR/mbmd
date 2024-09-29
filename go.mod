@@ -5,9 +5,10 @@ go 1.21
 toolchain go1.21.5
 
 require (
-	github.com/andig/gosunspec v0.0.0-20231205122018-1daccfa17912
+	github.com/andig/gosunspec v0.0.0-20240918203654-860ce51d602b
 	github.com/dmarkham/enumer v1.5.9
 	github.com/eclipse/paho.mqtt.golang v1.4.3
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.1
@@ -28,7 +29,6 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/google/go-github v17.0.0+incompatible // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
